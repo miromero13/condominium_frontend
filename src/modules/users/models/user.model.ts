@@ -3,7 +3,7 @@ import { type ApiBase } from '@/models'
 export interface User extends ApiBase {
   ci: number
   name: string
-  phone: number
+  phone: string
   email: string
   password: string
   role: string
@@ -18,4 +18,6 @@ export interface FormUser extends Partial<Omit<User, 'password'>> {
   password: string
 }
 
-export interface UpdateUser extends CreateUser { }
+export interface UpdateUser extends Partial<Omit<User, 'id' | 'created_at' | 'updated_at'>> {
+  id: string
+}

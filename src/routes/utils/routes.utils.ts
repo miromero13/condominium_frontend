@@ -1,5 +1,7 @@
 import { createElement, lazy } from 'react'
 import { userRoutes } from '.'
+import { houseRoutes } from './house.utils'
+import { quoteRoutes } from './quote.utils'
 import { PrivateRoutes, type Route } from '@/models/routes.model'
 import { type PERMISSION } from '@/modules/auth/utils/permissions.constants'
 
@@ -23,5 +25,7 @@ export const PrivateAllRoutes: Route[] = [
   //   element: createElement(SettingPage),
   //   permissions: [] as PERMISSION[]
   // },
-  ...userRoutes
+  ...userRoutes,
+  ...houseRoutes,
+  ...quoteRoutes
 ]

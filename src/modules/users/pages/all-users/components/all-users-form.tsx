@@ -19,10 +19,10 @@ import {
 } from '@/components/ui/select'
 import { PrivateRoutes } from '@/models/routes.model'
 import {
-  useCreateUser,
-  useGetUser,
-  useUpdateUser
-} from '@/modules/users/hooks/useUser'
+  useCreateAllUser,
+  useGetAllUser,
+  useUpdateAllUser
+} from '@/modules/users/hooks/useAllUsers'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { ChevronLeftIcon } from 'lucide-react'
 import { useForm } from 'react-hook-form'
@@ -48,99 +48,113 @@ const baseSchema = z.object({
     .email('Correo inválido')
     .max(100),
   role: z
-    .string()
-    .min(1, 'El rol es requerido')
-    .refine((value) => {
-      const roles = Object.values(PERMISSION)
-      return roles.includes(value as PERMISSION)
-    }, 'Rol inválido'),
+    .string({ required_error: 'El rol es requerido' })
+    .refine((val) => Object.values(PERMISSION).includes(val as PERMISSION), {
+      message: 'Rol no válido'
+    }),
   phone: z
-    .string()
-    .min(6, 'El teléfono debe tener al menos 6 caracteres')
-    .optional()
+    .string({ required_error: 'El teléfono es requerido' })
+    .min(7, 'Mínimo 7 dígitos')
+    .max(20)
 })
 
 const createSchema = baseSchema.extend({
   password: z
     .string({ required_error: 'La contraseña es requerida' })
     .min(6, 'Mínimo 6 caracteres')
-    .max(20, 'Máximo 20 caracteres')
+    .max(100)
 })
 
 const editSchema = baseSchema.extend({
-  password: z.string().optional()
+  password: z
+    .string()
+    .min(6, 'Mínimo 6 caracteres')
+    .max(100)
+    .optional()
+    .or(z.literal(''))
 })
 
-const UserFormPage = ({ buttonText, title }: IFormProps) => {
+const AllUsersFormPage = ({ buttonText, title }: IFormProps) => {
   useHeader([
     { label: 'Dashboard', path: PrivateRoutes.DASHBOARD },
-    { label: 'Administrativo', path: PrivateRoutes.USER },
+    { label: 'Usuarios Generales', path: PrivateRoutes.ALL_USERS },
     { label: title }
   ])
+  
   const { id } = useParams()
-  console.log(id)
   const navigate = useNavigate()
-  const { createUser, isMutating } = useCreateUser()
-  const { updateUser } = useUpdateUser()
-  const { user } = useGetUser(id)
+  const { createAllUser, isMutating } = useCreateAllUser()
+  const { updateAllUser } = useUpdateAllUser()
+  const { allUser } = useGetAllUser(id)
 
   const form = useForm<z.infer<typeof baseSchema | typeof createSchema>>({
     resolver: zodResolver(id ? editSchema : createSchema),
     values: {
-      ci: user?.ci ?? 0,
-      email: user?.email ?? '',
-      name: user?.name ?? '',
-      password: id ? '' : user?.password ?? '',
-      role: user?.role ?? '',
-      phone: user?.phone ?? '',
+      ci: allUser?.ci ?? 0,
+      name: allUser?.name ?? '',
+      email: allUser?.email ?? '',
+      role: allUser?.role ?? '',
+      phone: allUser?.phone ?? '',
+      password: ''
     }
   })
+  
   type FormData = z.infer<typeof createSchema> | z.infer<typeof editSchema>
 
   const onSubmit = (data: FormData) => {
     if (id) {
-      toast.promise(updateUser({ id, ...data, password: data.password ?? '' }), {
-        loading: 'Actualizando administrativo...',
+      toast.promise(updateAllUser({ id, ...data }), {
+        loading: 'Actualizando usuario...',
         success: () => {
           setTimeout(() => {
-            navigate(PrivateRoutes.USER, { replace: true })
+            navigate(PrivateRoutes.ALL_USERS, { replace: true })
           }, 1000)
-          return 'Administrativo actualizado exitosamente'
+          return 'Usuario actualizado exitosamente'
         },
         error(error) {
-          return error.errorMessages[0] ?? 'Error al actualizar el administrativo'
+          return error.errorMessages[0] ?? 'Error al actualizar usuario'
         }
       })
     } else {
-      toast.promise(createUser({ ...data, password: data.password ?? '' }), {
-        loading: 'Creando administrativo...',
+      // Ensure password is present for creation
+      const createData = {
+        ...data,
+        password: data.password || '' // Ensure password is never undefined
+      }
+      toast.promise(createAllUser(createData as any), {
+        loading: 'Creando usuario...',
         success: () => {
           setTimeout(() => {
-            navigate(PrivateRoutes.USER, { replace: true })
+            navigate(PrivateRoutes.ALL_USERS, { replace: true })
           }, 1000)
-          return 'Administrativo creado exitosamente'
+          return 'Usuario creado exitosamente'
         },
         error(error) {
-          return error.errorMessages[0] ?? 'Error al crear el administrativo'
+          return error.errorMessages[0] ?? 'Error al crear usuario'
         }
       })
     }
   }
 
+  const getRoleOptions = () => {
+    return [
+      { value: PERMISSION.ADMINISTRATOR, label: 'Administrador' },
+      { value: PERMISSION.GUARD, label: 'Guardia' },
+      { value: PERMISSION.OWNER, label: 'Propietario' },
+      { value: PERMISSION.RESIDENT, label: 'Residente' },
+      { value: PERMISSION.VISITOR, label: 'Visitante' }
+    ]
+  }
+
   return (
     <section className="grid flex-1 items-start gap-4 lg:gap-6">
       <Form {...form}>
-        <form
-          onSubmit={form.handleSubmit(onSubmit)}
-          className="mx-auto w-full flex flex-col gap-4 lg:gap-6"
-        >
+        <form onSubmit={form.handleSubmit(onSubmit)} className="mx-auto w-full flex flex-col gap-4 lg:gap-6">
           <div>
             <div className="flex items-center gap-4">
               <Button
                 type="button"
-                onClick={() => {
-                  navigate(PrivateRoutes.USER)
-                }}
+                onClick={() => { navigate(PrivateRoutes.ALL_USERS) }}
                 variant="outline"
                 size="icon"
                 className="h-7 w-7"
@@ -154,9 +168,7 @@ const UserFormPage = ({ buttonText, title }: IFormProps) => {
               <div className="hidden items-center gap-2 md:ml-auto md:flex">
                 <Button
                   type="button"
-                  onClick={() => {
-                    navigate(PrivateRoutes.USER)
-                  }}
+                  onClick={() => { navigate(PrivateRoutes.ALL_USERS) }}
                   variant="outline"
                   size="sm"
                 >
@@ -183,7 +195,7 @@ const UserFormPage = ({ buttonText, title }: IFormProps) => {
                         <FormLabel>Nombre</FormLabel>
                         <FormControl>
                           <Input
-                            placeholder="Ingresa el nombre del administrativo"
+                            placeholder="Ingresa el nombre del usuario"
                             {...field}
                           />
                         </FormControl>
@@ -253,36 +265,36 @@ const UserFormPage = ({ buttonText, title }: IFormProps) => {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value={PERMISSION.ADMINISTRATOR}>
-                            Administrador
-                          </SelectItem>
-                          <SelectItem value={PERMISSION.GUARD}>
-                            Guardia
-                          </SelectItem>
+                          {getRoleOptions().map((option) => (
+                            <SelectItem key={option.value} value={option.value}>
+                              {option.label}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                { !id && (
-                  <FormField
+                <FormField
                   control={form.control}
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Contraseña</FormLabel>
+                      <FormLabel>
+                        {id ? 'Nueva Contraseña (opcional)' : 'Contraseña'}
+                      </FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="************"
                           type="password"
+                          placeholder={id ? 'Dejar vacío para mantener actual' : '••••••••'}
                           {...field}
                         />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
-                />)}
+                />
               </CardContent>
             </Card>
           </div>
@@ -291,9 +303,7 @@ const UserFormPage = ({ buttonText, title }: IFormProps) => {
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => {
-                navigate(PrivateRoutes.USER)
-              }}
+              onClick={() => { navigate(PrivateRoutes.ALL_USERS) }}
             >
               Descartar
             </Button>
@@ -307,4 +317,4 @@ const UserFormPage = ({ buttonText, title }: IFormProps) => {
   )
 }
 
-export default UserFormPage
+export default AllUsersFormPage

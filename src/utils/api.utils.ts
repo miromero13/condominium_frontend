@@ -7,6 +7,16 @@ export const ENDPOINTS = {
   CHECK_TOKEN: '/api/auth/check-token/',
   // users
   USER: '/api/users/',
+  ALL_USERS: '/api/all-users/',
+  // houses
+  HOUSE: '/api/houses/',
+  HOUSE_USER: '/api/house-users/',
+  PET: '/api/pets/',
+  VEHICLE: '/api/vehicles/',
+  // quotes
+  QUOTE: '/api/quotes/',
+  PAYMENT_METHOD: '/api/payment-methods/',
+  PAYMENT_GATEWAY: '/api/payment-gateways/',
 }
 
 export const API_BASEURL = AppConfig.API_URL
