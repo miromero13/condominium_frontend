@@ -46,7 +46,6 @@ const useGetAllResource = <T>({ endpoint, isPagination }: ParamResurce) => {
 
 const useUpdateResource = <TData>(endpoint: string, id?: string) => {
   const url = buildUrl({ endpoint, id })
-  console.log(url)
   const { trigger, isMutating, error } =
     useSWRMutation<Promise<void>, ResponseError, string, TData>(url, updateResource)
   return { updateResource: trigger, isMutating, error }
