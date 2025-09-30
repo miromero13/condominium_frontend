@@ -10,37 +10,35 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import Skeleton from '@/components/shared/skeleton'
 import Pagination from '@/components/shared/pagination'
-import { useDeleteUser, useGetAllUser } from '../../hooks/useUser'
-import { type User } from '../../models/user.model'
+import { useDeleteResident, useGetAllResident } from '../../hooks/useResident'
+import { type Resident } from '../../models/resident.model'
 import { useHeader } from '@/hooks'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog'
 import { Input } from '@/components/ui/input'
 import useDebounce from '@/hooks/useDebounce'
 import { Badge } from '@/components/ui/badge'
 
-const UserPage = (): JSX.Element => {
+const ResidentPage = (): JSX.Element => {
   useHeader([
     { label: 'Dashboard', path: PrivateRoutes.DASHBOARD },
-    { label: 'Administrativos' }
+    { label: 'Residentes' }
   ])
   const navigate = useNavigate()
-  const { allUsers, countData, isLoading, mutate, filterOptions, newPage, prevPage, setOffset, search } = useGetAllUser()
-  const { deleteUser } = useDeleteUser()
+  const { allResource: allResidents, countData, isLoading, mutate, filterOptions, newPage, prevPage, setOffset, search } = useGetAllResident()
+  const { deleteResource: deleteResident } = useDeleteResident()
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   const [searchProduct, setSearchProduct] = useState('')
   const debounceSearchProduct = useDebounce(searchProduct, 1000)
-  const deletePermanentlyUser = (id: string) => {
-    toast.promise(deleteUser(id), {
+  
+  const deletePermanentlyResident = (id: string) => {
+    toast.promise(deleteResident(id), {
       loading: 'Cargando...',
       success: () => {
         void mutate()
-        setTimeout(() => {
-          navigate(PrivateRoutes.USER_CREATE, { replace: true })
-        }, 1000)
-        return 'Administrativo eliminado exitosamente'
+        return 'Residente eliminado exitosamente'
       },
       error(error) {
-        return error.errorMessages[0] ?? 'Puede que el administrativo tenga permisos asignados, por lo que no se puede eliminar'
+        return error.errorMessages[0] ?? 'Error al eliminar el residente'
       }
     })
     setIsDialogOpen(false)
@@ -49,6 +47,7 @@ const UserPage = (): JSX.Element => {
   useEffect(() => {
     search('name', debounceSearchProduct)
   }, [debounceSearchProduct])
+
   return (
     <section className='grid gap-4 overflow-hidden w-full relative'>
       <div className="inline-flex items-center flex-wrap gap-2">
@@ -80,19 +79,18 @@ const UserPage = (): JSX.Element => {
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Filtrar por</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuCheckboxItem checked>Name</DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem checked>Nombre</DropdownMenuCheckboxItem>
             <DropdownMenuCheckboxItem checked>Rol</DropdownMenuCheckboxItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        {/* <Button size="sm" variant="outline" className="h-8 gap-1"><File className="h-3.5 w-3.5" /></Button> */}
-        <Button onClick={() => { navigate(PrivateRoutes.USER_CREATE) }} size="sm" className="h-8 gap-1">
+        <Button onClick={() => { navigate(PrivateRoutes.RESIDENT_CREATE) }} size="sm" className="h-8 gap-1">
           <PlusCircle className="h-3.5 w-3.5" />
           <span className="sr-only lg:not-sr-only sm:whitespace-nowrap">Agregar</span>
         </Button>
       </div>
       <Card x-chunk="dashboard-06-chunk-0" className='flex flex-col overflow-hidden w-full relative'>
         <CardHeader>
-          <CardTitle>Todos los administrativos</CardTitle>
+          <CardTitle>Todos los residentes</CardTitle>
         </CardHeader>
         <CardContent className='overflow-hidden relative w-full'>
           <div className='overflow-x-auto'>
@@ -100,7 +98,10 @@ const UserPage = (): JSX.Element => {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nombre</TableHead>
+                  <TableHead>CI</TableHead>
                   <TableHead>Email</TableHead>
+                  <TableHead>Teléfono</TableHead>
+                  <TableHead>Rol</TableHead>
                   <TableHead>Estado</TableHead>
                   <TableHead>App Habilitada</TableHead>
                   <TableHead><span className='sr-only'>Opciones</span></TableHead>
@@ -108,19 +109,28 @@ const UserPage = (): JSX.Element => {
               </TableHeader>
               <TableBody>
                 {isLoading
-                  ? <Skeleton rows={filterOptions.limit} columns={5} />
-                  : allUsers?.map((user: User) => (
-                    <TableRow key={user.id}>
-                      <TableCell>{user.name}</TableCell>
-                      <TableCell>{user.email}</TableCell>
+                  ? <Skeleton rows={filterOptions.limit} columns={8} />
+                  : allResidents?.map((resident: Resident) => (
+                    <TableRow key={resident.id}>
+                      <TableCell>{resident.name}</TableCell>
+                      <TableCell>{resident.ci}</TableCell>
+                      <TableCell>{resident.email}</TableCell>
+                      <TableCell>{resident.phone}</TableCell>
                       <TableCell>
-                        <Badge variant={user.is_active ? 'default' : 'outline'}>
-                          {user.is_active ? 'Activo' : 'Inactivo'}
+                        <Badge variant="outline">
+                          {resident.role === 'owner' ? 'Propietario' : 
+                           resident.role === 'resident' ? 'Residente' : 
+                           resident.role === 'visitor' ? 'Visitante' : resident.role}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={user.app_enabled ? 'default' : 'secondary'}>
-                          {user.app_enabled ? 'Habilitada' : 'Deshabilitada'}
+                        <Badge variant={resident.is_active ? 'default' : 'outline'}>
+                          {resident.is_active ? 'Activo' : 'Inactivo'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={resident.app_enabled ? 'default' : 'secondary'}>
+                          {resident.app_enabled ? 'Habilitada' : 'Deshabilitada'}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -133,36 +143,36 @@ const UserPage = (): JSX.Element => {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => { navigate(`${PrivateRoutes.USER}/${user.id}`) }}>Editar</DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => { navigate(`${PrivateRoutes.RESIDENT}/${resident.id}`) }}>Editar</DropdownMenuItem>
                             <DropdownMenuItem className='p-0'>
                               <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                                 <AlertDialogTrigger asChild className='w-full px-2 py-1.5'>
                                   <div
                                     onClick={(event) => { event.stopPropagation() }}
-                                    className={`${user.is_active ? 'text-danger' : ''} flex items-center`}
+                                    className={`${resident.is_active ? 'text-danger' : ''} flex items-center`}
                                   >
-                                    {user.is_active
+                                    {resident.is_active
                                       ? <><Trash className="mr-2 h-4 w-4" />Eliminar</>
                                       : 'Activar'}
                                   </div>
                                 </AlertDialogTrigger>
                                 <AlertDialogContent>
                                   <AlertDialogHeader>
-                                    <AlertDialogTitle>{user.is_active ? 'Eliminar administrativo' : 'Activar administrativo'}</AlertDialogTitle>
+                                    <AlertDialogTitle>{resident.is_active ? 'Eliminar residente' : 'Activar residente'}</AlertDialogTitle>
                                   </AlertDialogHeader>
-                                  {user.is_active
+                                  {resident.is_active
                                     ? <>
-                                      <AlertDialogDescription>Esta acción eliminará el administrativo, no se puede deshacer.</AlertDialogDescription>
+                                      <AlertDialogDescription>Esta acción eliminará el residente, no se puede deshacer.</AlertDialogDescription>
                                       <AlertDialogDescription>¿Estás seguro que deseas continuar?</AlertDialogDescription>
                                     </>
                                     : <AlertDialogDescription>
-                                      Para activar el ajero deberá contactarse con un administrador del sistema.
+                                      Para activar el residente deberá contactarse con un administrador del sistema.
                                     </AlertDialogDescription>
                                   }
                                   <AlertDialogFooter>
                                     <AlertDialogCancel className='h-fit'>Cancelar</AlertDialogCancel>
-                                    {user.is_active &&
-                                      <AlertDialogAction className='h-full' onClick={() => { deletePermanentlyUser(user.id) }}>
+                                    {resident.is_active &&
+                                      <AlertDialogAction className='h-full' onClick={() => { deletePermanentlyResident(resident.id) }}>
                                         Continuar
                                       </AlertDialogAction>}
                                   </AlertDialogFooter>
@@ -181,7 +191,7 @@ const UserPage = (): JSX.Element => {
         <CardFooter className='w-full'>
           <Pagination
             allItems={countData ?? 0}
-            currentItems={allUsers?.length ?? 0}
+            currentItems={allResidents?.length ?? 0}
             limit={filterOptions.limit}
             newPage={() => { newPage(countData ?? 0) }}
             offset={filterOptions.offset}
@@ -196,4 +206,4 @@ const UserPage = (): JSX.Element => {
   )
 }
 
-export default UserPage
+export default ResidentPage

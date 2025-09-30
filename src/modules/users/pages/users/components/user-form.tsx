@@ -32,6 +32,7 @@ import { toast } from 'sonner'
 import { useHeader } from '@/hooks'
 import { type IFormProps } from '@/models'
 import { PERMISSION } from '@/modules/auth/utils/permissions.constants'
+import { useEffect, useState } from 'react'
 
 const baseSchema = z.object({
   ci: z
@@ -60,11 +61,26 @@ const baseSchema = z.object({
     .optional()
 })
 
+// Roles que usan contraseña automática (CI)
+const RESIDENTIAL_ROLES = [PERMISSION.RESIDENT, PERMISSION.OWNER, PERMISSION.VISITOR]
+
 const createSchema = baseSchema.extend({
   password: z
-    .string({ required_error: 'La contraseña es requerida' })
-    .min(6, 'Mínimo 6 caracteres')
-    .max(20, 'Máximo 20 caracteres')
+    .string()
+    .optional()
+}).refine((data) => {
+  // Si es un rol residencial, no requiere contraseña
+  if (RESIDENTIAL_ROLES.includes(data.role as PERMISSION)) {
+    return true
+  }
+  // Para otros roles, la contraseña es requerida
+  if (!data.password || data.password.length < 6) {
+    return false
+  }
+  return true
+}, {
+  message: 'La contraseña es requerida para este rol (mínimo 6 caracteres)',
+  path: ['password']
 })
 
 const editSchema = baseSchema.extend({
@@ -84,6 +100,14 @@ const UserFormPage = ({ buttonText, title }: IFormProps) => {
   const { updateUser } = useUpdateUser()
   const { user } = useGetUser(id)
 
+  // Estado para observar el rol seleccionado
+  const [selectedRole, setSelectedRole] = useState<string>(user?.role ?? '')
+  
+  // Función para determinar si se requiere contraseña manual
+  const requiresManualPassword = (role: string): boolean => {
+    return !RESIDENTIAL_ROLES.includes(role as PERMISSION)
+  }
+
   const form = useForm<z.infer<typeof baseSchema | typeof createSchema>>({
     resolver: zodResolver(id ? editSchema : createSchema),
     values: {
@@ -95,33 +119,53 @@ const UserFormPage = ({ buttonText, title }: IFormProps) => {
       phone: user?.phone ?? 0
     }
   })
+  
+  // Observar cambios en el campo role
+  const watchedRole = form.watch('role')
+  
+  // Actualizar el estado cuando cambie el rol
+  useEffect(() => {
+    if (watchedRole !== selectedRole) {
+      setSelectedRole(watchedRole)
+      // Limpiar contraseña si es un rol residencial
+      if (!requiresManualPassword(watchedRole)) {
+        form.setValue('password', '')
+      }
+    }
+  }, [watchedRole, selectedRole, form])
   type FormData = z.infer<typeof createSchema> | z.infer<typeof editSchema>
 
   const onSubmit = (data: FormData) => {
+    // Para roles residenciales, no enviar contraseña (se usará CI automáticamente)
+    const submitData = { ...data }
+    if (!requiresManualPassword(data.role)) {
+      delete submitData.password
+    }
+    
     if (id) {
-      toast.promise(updateUser({ id, ...data, password: data.password ?? '' }), {
-        loading: 'Actualizando administrativo...',
+      toast.promise(updateUser({ id, ...submitData, password: submitData.password ?? '' }), {
+        loading: 'Actualizando usuario...',
         success: () => {
           setTimeout(() => {
             navigate(PrivateRoutes.USER, { replace: true })
           }, 1000)
-          return 'Administrativo actualizado exitosamente'
+          return 'Usuario actualizado exitosamente'
         },
         error(error) {
-          return error.errorMessages[0] ?? 'Error al actualizar el administrativo'
+          return error.errorMessages[0] ?? 'Error al actualizar el usuario'
         }
       })
     } else {
-      toast.promise(createUser({ ...data, password: data.password ?? '' }), {
-        loading: 'Creando administrativo...',
+      toast.promise(createUser({ ...submitData, password: submitData.password ?? '' }), {
+        loading: 'Creando usuario...',
         success: () => {
           setTimeout(() => {
             navigate(PrivateRoutes.USER, { replace: true })
           }, 1000)
-          return 'Administrativo creado exitosamente'
+          return 'Usuario creado exitosamente'
         },
         error(error) {
-          return error.errorMessages[0] ?? 'Error al crear el administrativo'
+          return error.errorMessages[0] ?? 'Error al crear el usuario'
         }
       })
     }
@@ -259,30 +303,52 @@ const UserFormPage = ({ buttonText, title }: IFormProps) => {
                           <SelectItem value={PERMISSION.GUARD}>
                             Guardia
                           </SelectItem>
+                          <SelectItem value={PERMISSION.OWNER}>
+                            Propietario
+                          </SelectItem>
+                          <SelectItem value={PERMISSION.RESIDENT}>
+                            Residente
+                          </SelectItem>
+                          <SelectItem value={PERMISSION.VISITOR}>
+                            Visitante
+                          </SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                { !id && (
+                
+                {/* Campo de contraseña condicional */}
+                {!id && requiresManualPassword(selectedRole || watchedRole) && (
                   <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Contraseña</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="************"
-                          type="password"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />)}
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Contraseña</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="************"
+                            type="password"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+                
+                {/* Mensaje informativo para roles residenciales */}
+                {!id && !requiresManualPassword(selectedRole || watchedRole) && (selectedRole || watchedRole) && (
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                    <p className="text-sm text-blue-800">
+                      <strong>Contraseña automática:</strong> Para este rol, se utilizará automáticamente el número de carnet como contraseña.
+                    </p>
+                  </div>
+                )}
+
               </CardContent>
             </Card>
           </div>
