@@ -1,6 +1,6 @@
 import { PrivateRoutes } from '@/models'
 import { PERMISSION } from '@/modules/auth/utils/permissions.constants'
-import { User, UserCogIcon, Building, Home, Users, Building2, MapPin, BookOpen } from 'lucide-react'
+import { User, UserCogIcon, Building, Home, Users, Building2, MapPin, BookOpen, Shield, Camera, Car, History } from 'lucide-react'
 import { createElement } from 'react'
 
 export interface MenuHeaderRoute {
@@ -66,6 +66,31 @@ export const MenuSideBar: MenuHeaderRoute[] = [
         icon: createElement(BookOpen, { width: 20, height: 20 }),
         path: PrivateRoutes.GENERAL_RULES,
         permissions: [PERMISSION.ADMINISTRATOR] as PERMISSION[]
+      }
+    ]
+  },
+  {
+    label: 'Gestión de Seguridad',
+    icon: createElement(Shield, { width: 20, height: 20 }),
+    permissions: [PERMISSION.ADMINISTRATOR, PERMISSION.GUARD] as PERMISSION[],
+    children: [
+      {
+        label: 'Detector de Placas',
+        icon: createElement(Camera, { width: 20, height: 20 }),
+        path: PrivateRoutes.SECURITY_DETECTOR,
+        permissions: [PERMISSION.ADMINISTRATOR, PERMISSION.GUARD] as PERMISSION[]
+      },
+      {
+        label: 'Vehículos Registrados',
+        icon: createElement(Car, { width: 20, height: 20 }),
+        path: PrivateRoutes.SECURITY_VEHICLES,
+        permissions: [PERMISSION.ADMINISTRATOR, PERMISSION.GUARD] as PERMISSION[]
+      },
+      {
+        label: 'Historial de Accesos',
+        icon: createElement(History, { width: 20, height: 20 }),
+        path: PrivateRoutes.SECURITY_HISTORY,
+        permissions: [PERMISSION.ADMINISTRATOR, PERMISSION.GUARD] as PERMISSION[]
       }
     ]
   }

@@ -18,6 +18,10 @@ export const ENDPOINTS = {
   COMMON_AREA_RULE: '/api/common-area-rules/',
   GENERAL_RULE: '/api/general-rules/',
   RESERVATION: '/api/reservations/',
+  // security
+  DETECT_PLATE: '/api/ai-system/detect-plate/',
+  VEHICLES: '/api/vehicles/',
+  ACCESS_HISTORY: '/api/eventos-ai/',
 }
 
 export const API_BASEURL = AppConfig.API_URL

@@ -33,6 +33,10 @@ export enum PrivateRoutes {
   COMMON_AREA_EDIT = '/areas-comunes/:id',
   COMMON_AREA_RULES = '/areas-comunes/:areaId/reglamento',
   COMMON_AREA_RESERVATIONS = '/areas-comunes/:areaId/reservas',
+  // security
+  SECURITY_DETECTOR = '/seguridad/detector',
+  SECURITY_VEHICLES = '/seguridad/vehiculos',
+  SECURITY_HISTORY = '/seguridad/historial',
 }
 
 export interface Route {
