@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ChevronLeftIcon, Camera, Upload, Scan, RefreshCw } from 'lucide-react'
+import { ChevronLeftIcon, Camera, Upload, Scan, RefreshCw, UserCheck, UserX } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
@@ -9,113 +9,112 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { useHeader } from '@/hooks'
 import { PrivateRoutes } from '@/models'
-import { useDetectPlate } from '../../hooks/useDetectPlate'
+import { useDetectFace } from '../../hooks/useDetectFace'
 
-const PlateDetectorPage = (): JSX.Element => {
+const FaceDetectorPage = (): JSX.Element => {
   useHeader([
     { label: 'Dashboard', path: PrivateRoutes.DASHBOARD },
-    { label: 'Detector de Placas' }
+    { label: 'Detector de Personas' }
   ])
 
   const navigate = useNavigate()
-  const { detectPlate, isDetecting } = useDetectPlate()
+  const { detectFace, isDetecting } = useDetectFace()
 
+  // Estados del componente
   const [cameraActive, setCameraActive] = useState(false)
   const [detectionResult, setDetectionResult] = useState<any>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
 
+  // Referencias para la cámara y streaming
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const streamingIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Función de detección
-  const handleDetection = useCallback(async (image: File | string, source: 'camera' | 'upload') => {
+  // Detección de rostro y registro en EventoAI
+  const handleDetection = useCallback(async (image: File | string, _source: 'camera' | 'upload' | 'stream') => {
     try {
-      const result = await detectPlate({ image, source })
+      const result = await detectFace({ image })
       setDetectionResult(result)
-      if (result.authorized_vehicle) {
-        toast.success(`Vehículo autorizado: ${result.plate_detected}`)
+      if (result.authorized_person) {
+        toast.success('Persona autorizada')
       } else {
-        toast.warning(`Vehículo NO autorizado: ${result.plate_detected}`)
+        toast.warning('Persona NO autorizada')
       }
     } catch (error: any) {
-      toast.error(error.errorMessages?.[0] ?? 'Error al detectar placa')
+      toast.error(error.errorMessages?.[0] ?? 'Error al detectar persona')
     }
-  }, [detectPlate])
+  }, [detectFace])
 
-  // Upload
-  const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
-    if (!file.type.startsWith('image/')) {
-      toast.error('Por favor selecciona una imagen válida')
-      return
-    }
-    setSelectedFile(file)
-    await handleDetection(file, 'upload')
-  }, [handleDetection])
-
-  // Iniciar cámara
+  // Iniciar cámara y streaming
   const startCamera = useCallback(async () => {
     try {
-      if (!navigator.mediaDevices?.getUserMedia) {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         toast.error('Su navegador no soporta acceso a la cámara')
         return
       }
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-          facingMode: 'user'
-        }
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' }
       })
-      console.log('Stream obtenido:', stream)
-      const videoTracks = stream.getVideoTracks()
-      console.log('Video tracks:', videoTracks)
-      if (videoTracks.length === 0) {
-        toast.error('No se detectaron tracks de video en el stream. Verifica la cámara o prueba otro facingMode.')
-      }
       streamRef.current = stream
       setCameraActive(true)
       toast.success('Cámara activada')
     } catch (error) {
-      console.error('Error cámara:', error)
-      toast.error('No se pudo acceder a la cámara')
+      toast.error(`Error de cámara: ${(error as Error).message || 'Error desconocido'}`)
     }
   }, [])
-  // Asignar el stream al video cuando cameraActive cambie
-  useEffect(() => {
-    if (cameraActive && videoRef.current && streamRef.current) {
-      videoRef.current.srcObject = streamRef.current
-      console.log('Asignando stream al videoRef desde useEffect:', streamRef.current)
-    }
-  }, [cameraActive, streamRef.current])
-  // Log y toast de dimensiones del video
-  useEffect(() => {
-    if (cameraActive && videoRef.current) {
-      const checkDimensions = setInterval(() => {
-        const video = videoRef.current
-        if (video) {
-          console.log('Video dimensions:', video.videoWidth, video.videoHeight)
-          if (video.videoWidth === 0 || video.videoHeight === 0) {
-            toast.error('La cámara está activa pero el video no tiene dimensiones válidas (videoWidth/videoHeight = 0).')
-          }
-        }
-      }, 1000)
-      return () => clearInterval(checkDimensions)
-    }
-  }, [cameraActive])
 
-  // Detener cámara
+  // Detener cámara y streaming
   const stopCamera = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop())
       streamRef.current = null
     }
     setCameraActive(false)
+    if (streamingIntervalRef.current) {
+      clearInterval(streamingIntervalRef.current)
+      streamingIntervalRef.current = null
+    }
   }, [])
 
-  // Capturar imagen
+  // Asignar el stream al video cuando cameraActive cambie
+  useEffect(() => {
+    if (cameraActive && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current
+      // Iniciar streaming de frames cada 4 segundos
+      streamingIntervalRef.current = setInterval(() => {
+        if (videoRef.current && canvasRef.current) {
+          const canvas = canvasRef.current
+          const video = videoRef.current
+          const ctx = canvas.getContext('2d')
+          if (ctx && video.videoWidth > 0 && video.videoHeight > 0) {
+            canvas.width = video.videoWidth
+            canvas.height = video.videoHeight
+            ctx.drawImage(video, 0, 0)
+            const imageBase64 = canvas.toDataURL('image/jpeg', 0.8)
+            handleDetection(imageBase64, 'stream')
+          }
+        }
+      }, 4000)
+    }
+    return () => {
+      if (streamingIntervalRef.current) {
+        clearInterval(streamingIntervalRef.current)
+        streamingIntervalRef.current = null
+      }
+    }
+  }, [cameraActive, handleDetection])
+
+  // Limpiar intervalos al desmontar
+  useEffect(() => {
+    return () => {
+      if (streamingIntervalRef.current) {
+        clearInterval(streamingIntervalRef.current)
+      }
+    }
+  }, [])
+
+  // Capturar imagen de la cámara y detectar
   const captureImage = useCallback(async () => {
     if (!videoRef.current || !canvasRef.current) {
       toast.error('Error: Referencias de video o canvas no disponibles')
@@ -129,27 +128,27 @@ const PlateDetectorPage = (): JSX.Element => {
       return
     }
     if (video.videoWidth === 0 || video.videoHeight === 0) {
-      toast.error('Error: El video no está activo (dimensiones 0)')
+      toast.error('Error: El video no está activo')
       return
     }
     canvas.width = video.videoWidth
     canvas.height = video.videoHeight
     ctx.drawImage(video, 0, 0)
-    const imageBase64Full = canvas.toDataURL('image/jpeg', 0.8)
-    // Enviar solo el base64 sin header
-    const imageBase64 = imageBase64Full.replace(/^data:image\/jpeg;base64,/, '')
+    const imageBase64 = canvas.toDataURL('image/jpeg', 0.8)
     await handleDetection(imageBase64, 'camera')
   }, [handleDetection])
 
-  // Envío automático cada 2 segundos cuando la cámara está activa
-  useEffect(() => {
-    if (cameraActive) {
-      const interval = setInterval(() => {
-        captureImage()
-      }, 4000)
-      return () => clearInterval(interval)
+  // Manejar upload de archivo y detectar
+  const handleFileUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      toast.error('Por favor selecciona una imagen válida')
+      return
     }
-  }, [cameraActive, captureImage])
+    setSelectedFile(file)
+    await handleDetection(file, 'upload')
+  }, [handleDetection])
 
   return (
     <section className="grid gap-4 overflow-hidden w-full relative">
@@ -164,7 +163,7 @@ const PlateDetectorPage = (): JSX.Element => {
         >
           <ChevronLeftIcon className="h-4 w-4" />
         </Button>
-        <h1 className="text-2xl font-bold">Detector de Placas IA</h1>
+        <h1 className="text-2xl font-bold">Detector de Personas IA</h1>
         <div className="ml-auto flex gap-2">
           {!cameraActive ? (
             <Button onClick={startCamera} size="sm" className="gap-2">
@@ -179,9 +178,8 @@ const PlateDetectorPage = (): JSX.Element => {
           )}
         </div>
       </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Panel Cámara */}
+        {/* Panel de Cámara */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -193,7 +191,6 @@ const PlateDetectorPage = (): JSX.Element => {
             <div className="relative bg-gray-900 rounded-lg overflow-hidden aspect-video">
               {cameraActive ? (
                 <video
-                  key={cameraActive ? streamRef.current?.id || 'active' : 'inactive'}
                   ref={videoRef}
                   autoPlay
                   playsInline
@@ -209,10 +206,11 @@ const PlateDetectorPage = (): JSX.Element => {
               )}
             </div>
             <canvas ref={canvasRef} className="hidden" />
-            <Button
-              onClick={captureImage}
+            <Button 
+              onClick={captureImage} 
               disabled={!cameraActive || isDetecting}
               className="w-full gap-2"
+              size="lg"
             >
               {isDetecting ? (
                 <>
@@ -222,14 +220,13 @@ const PlateDetectorPage = (): JSX.Element => {
               ) : (
                 <>
                   <Scan className="h-4 w-4" />
-                  Capturar y Detectar Placa
+                  Capturar y Detectar Persona
                 </>
               )}
             </Button>
           </CardContent>
         </Card>
-
-        {/* Panel Upload */}
+        {/* Panel de Upload */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -266,37 +263,64 @@ const PlateDetectorPage = (): JSX.Element => {
           </CardContent>
         </Card>
       </div>
-
-      {/* Resultado */}
+      {/* Resultado de Detección */}
       {detectionResult && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Scan className="h-5 w-5" />
+              {detectionResult.authorized_person ? <UserCheck className="h-5 w-5 text-green-600" /> : <UserX className="h-5 w-5 text-red-600" />}
               Resultado de Detección
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <p className="text-sm font-medium">Placa Detectada</p>
+                <p className="text-sm font-medium">Usuario Detectado</p>
                 <p className="text-2xl font-mono font-bold">
-                  {detectionResult.plate_detected || 'No detectada'}
+                  {detectionResult.person_info?.nombre || 'No detectado'}
                 </p>
+                {detectionResult.authorized_person && detectionResult.person_info?.email && (
+                  <p className="text-base font-mono text-blue-700">
+                    {detectionResult.person_info.email}
+                  </p>
+                )}
               </div>
               <div className="space-y-2">
                 <p className="text-sm font-medium">Confianza</p>
-                <Badge variant={detectionResult.confidence > 0.8 ? 'default' : 'secondary'}>
-                  {Math.min(detectionResult.confidence * 100, 100).toFixed(1)}%
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant={detectionResult.confidence > 0.8 ? 'default' : 'secondary'}>
+                    {Math.min(detectionResult.confidence * 100, 100).toFixed(1)}%
+                  </Badge>
+                </div>
               </div>
               <div className="space-y-2">
                 <p className="text-sm font-medium">Estado</p>
-                <Badge variant={detectionResult.authorized_vehicle ? 'success' : 'destructive'}>
-                  {detectionResult.authorized_vehicle ? 'AUTORIZADO' : 'NO AUTORIZADO'}
+                <Badge 
+                  variant={detectionResult.authorized_person ? 'success' : 'destructive'}
+                >
+                  {detectionResult.authorized_person ? 'AUTORIZADO' : 'NO AUTORIZADO'}
                 </Badge>
               </div>
             </div>
+            <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+              <p className="text-sm">
+                <strong>Mensaje:</strong> {detectionResult.mensaje}
+              </p>
+              <p className="text-xs text-gray-600 mt-1">
+                Tiempo de procesamiento: {detectionResult.tiempo_procesamiento}s
+              </p>
+            </div>
+            {detectionResult.person_info && (
+              <div className="mt-4 p-4 border rounded-lg">
+                <h4 className="font-medium mb-2">Información de la Persona</h4>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <p><strong>Nombre:</strong> {detectionResult.person_info.nombre}</p>
+                  <p><strong>Email:</strong> {detectionResult.person_info.email ?? 'No disponible'}</p>
+                  <p><strong>Teléfono:</strong> {detectionResult.person_info.telefono ?? 'No disponible'}</p>
+                  <p><strong>Rol:</strong> {detectionResult.person_info.rol}</p>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -304,4 +328,4 @@ const PlateDetectorPage = (): JSX.Element => {
   )
 }
 
-export default PlateDetectorPage
+export default FaceDetectorPage

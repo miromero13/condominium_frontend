@@ -81,6 +81,12 @@ export const MenuSideBar: MenuHeaderRoute[] = [
         permissions: [PERMISSION.ADMINISTRATOR, PERMISSION.GUARD] as PERMISSION[]
       },
       {
+        label: 'Detector de Personas',
+        icon: createElement(User, { width: 20, height: 20 }),
+        path: PrivateRoutes.SECURITY_PERSON,
+        permissions: [PERMISSION.ADMINISTRATOR, PERMISSION.GUARD] as PERMISSION[]
+      },
+      {
         label: 'Vehículos Registrados',
         icon: createElement(Car, { width: 20, height: 20 }),
         path: PrivateRoutes.SECURITY_VEHICLES,
