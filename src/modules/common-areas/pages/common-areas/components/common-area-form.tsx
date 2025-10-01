@@ -15,7 +15,7 @@ import { z } from 'zod'
 import { toast } from 'sonner'
 import { useHeader } from '@/hooks'
 import { type IFormProps } from '@/models'
-import { type CommonArea, type CreateCommonArea } from '../../models/common-area.model'
+import { type CommonArea, type CreateCommonArea } from '../../../models/common-area.model'
 
 const baseSchema = z.object({
   name: z
@@ -105,7 +105,7 @@ const CommonAreaFormPage = ({ buttonText, title }: IFormProps) => {
 
   const onSubmit = (data: FormData) => {
     if (id) {
-      toast.promise(updateCommonArea({ id, ...data }), {
+      toast.promise(updateCommonArea(data), {
         loading: 'Actualizando área común...',
         success: () => {
           setTimeout(() => {

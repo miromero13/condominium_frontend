@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
-import { ArrowLeft, Plus, Search, Calendar, Clock, Users, CheckCircle, XCircle, Trash2, Edit, Eye } from 'lucide-react'
+import { ArrowLeft, Plus, Search, Calendar, Clock, Users, CheckCircle, XCircle, Trash2, Eye } from 'lucide-react'
 import { useDeleteResource } from '@/hooks/useApiResource'
 import { ENDPOINTS, buildUrl, API_BASEURL } from '@/utils'
 import { 
@@ -196,11 +196,6 @@ export function ReservationManagement({ commonAreaId }: ReservationManagementPro
   const handleViewDetails = (reservation: Reservation) => {
     setSelectedReservation(reservation)
     setShowDetailDialog(true)
-  }
-
-  const handleEdit = (reservation: Reservation) => {
-    setSelectedReservation(reservation)
-    setShowEditDialog(true)
   }
 
   const onReservationSuccess = () => {

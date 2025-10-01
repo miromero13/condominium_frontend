@@ -24,8 +24,7 @@ const VehiclesPage = (): JSX.Element => {
   const { 
     allVehicles, 
     countData, 
-    isLoading, 
-    mutate, 
+    isLoading,
     filterOptions, 
     newPage, 
     prevPage, 

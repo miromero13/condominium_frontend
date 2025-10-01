@@ -6,10 +6,30 @@ import { PrivateRoutes, PublicRoutes } from '@/models/routes.model'
 import Loading from '@/components/shared/loading'
 
 const LoginPage = lazy(() => import('@modules/auth/pages/login'))
+const PaymentSuccess = lazy(() => import('@/pages/PaymentSuccess'))
+const PaymentCancel = lazy(() => import('@/pages/PaymentCancel'))
 
 const Routes = () => {
   return (
     <BaseRoutes>
+      {/* Rutas públicas de pagos (sin autenticación requerida) */}
+      <Route
+        path={PublicRoutes.PAYMENT_SUCCESS}
+        element={
+          <Suspense fallback={<Loading />}>
+            <PaymentSuccess />
+          </Suspense>
+        }
+      />
+      <Route
+        path={PublicRoutes.PAYMENT_CANCEL}
+        element={
+          <Suspense fallback={<Loading />}>
+            <PaymentCancel />
+          </Suspense>
+        }
+      />
+      
       {/* Rutas públicas, pero si ya está autenticado ocultar dichas rutas */}
       <Route
         element={

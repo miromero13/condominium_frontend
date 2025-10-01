@@ -7,6 +7,13 @@ export interface CommonArea extends ApiBase {
   cost_per_hour: number
   is_reservable: boolean
   is_active: boolean
+  max_reservation_hours: number
+  operating_hours_start: string
+  operating_hours_end: string
+  requires_payment: boolean
+  maintenance_notes: string
+  advance_reservation_days: number
+  price_per_hour: number | null
   available_from: string
   available_to: string
   available_monday: boolean

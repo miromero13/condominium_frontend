@@ -3,6 +3,8 @@ import { type PERMISSION } from '@/modules/auth/utils/permissions.constants'
 export enum PublicRoutes {
   LOGIN = '/login',
   RESET_PASSWORD = '/reset-password',
+  PAYMENT_SUCCESS = '/payment/success',
+  PAYMENT_CANCEL = '/payment/cancel',
 }
 
 export enum PrivateRoutes {

@@ -15,7 +15,6 @@ import {
   type PlateDetectionRequest, 
   type PlateDetectionResponse, 
   type Vehicle, 
-  type AccessHistory,
   type CreateAccessHistory,
   type SecurityStats
 } from '../models/security.model'

@@ -24,8 +24,7 @@ const HistoryPage = (): JSX.Element => {
   const { 
     allAccessHistory, 
     countData, 
-    isLoading, 
-    mutate, 
+    isLoading,
     filterOptions, 
     newPage, 
     prevPage, 
