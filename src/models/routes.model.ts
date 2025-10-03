@@ -39,6 +39,7 @@ export enum PrivateRoutes {
   SECURITY_DETECTOR = '/seguridad/detector',
   SECURITY_VEHICLES = '/seguridad/vehiculos',
   SECURITY_HISTORY = '/seguridad/historial',
+  SECURITY_PERSON = '/seguridad/persona',
 }
 
 export interface Route {

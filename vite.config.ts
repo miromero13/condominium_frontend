@@ -22,4 +22,19 @@ export default defineConfig({
       '@utils': path.resolve(__dirname, './src/utils'),
     }
   }
+  ,
+  server: {
+    proxy: {
+      '/api/ai-system': {
+        target: 'http://localhost:8000', // Cambia el puerto si tu backend usa otro
+        changeOrigin: true,
+        secure: false,
+      },
+      '/api/face/verify': {
+        target: 'http://localhost:8000', // Cambia el puerto si tu backend usa otro
+        changeOrigin: true,
+        secure: false,
+      }
+    }
+  }
 })
